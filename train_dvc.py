@@ -24,6 +24,7 @@ def train(
     learning_rate: float = 1e-4,
     val_percent: float = 0.1,
     save_checkpoint: bool = True,
+    save_images: bool = True,
     img_size: float = 128,
     amp: bool = False,
     weight_decay: float = 1e-8,
@@ -62,6 +63,7 @@ def train(
             "training_size": n_train,
             "validation_size": n_val,
             "checkpoints": save_checkpoint,
+            "save_images": save_images,
             "device": device.type,
             "images_size": img_size,
             "mixed_precision": amp,
@@ -108,7 +110,7 @@ def train(
             live.log_metric("train_loss", loss.item())
 
         # Evaluation round
-        val_loss = evaluate(model, val_loader, device)
+        val_loss = evaluate(model, val_loader, device, save_images)
         scheduler.step(val_loss)
         live.log_metric("val_loss", val_loss)
 
@@ -124,7 +126,7 @@ def train(
     live.end()
 
 
-def evaluate(model, val_loader, device):
+def evaluate(model, val_loader, device, save_images):
     model.eval()
     criterion = nn.MSELoss()
     val_loss = 0
@@ -144,4 +146,4 @@ def evaluate(model, val_loader, device):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(n_channels=3, n_classes=3)
-    train(model=model, device=device)
+    train(model=model, device=device, epochs=10)
