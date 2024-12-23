@@ -86,8 +86,9 @@ def train(
 
         model.train()
         epoch_loss = 0
+        
         for batch in tqdm(
-            train_loader, desc=f"Epoch [{epoch:>len(str(epochs))}/{epochs}]"
+            train_loader, desc=f"Epoch [{epoch:>{len(str(epochs))}}/{epochs}]"
         ):
             x, y = batch
             x = x.to(device=device, dtype=torch.float32)
