@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
@@ -28,7 +29,7 @@ def predict(net, device, img, transform=None):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(n_channels=3, n_classes=3)
-    model.load_state_dict(torch.load("./checkpoints/checkpoint_epoch1.pth"))
+    model.load_state_dict(torch.load("./checkpoints/checkpoint_epoch7.pth"))
     model.eval()
     img = Image.open("./CIII/pre/front/processed/625505.jpg")
     transform = transforms.Compose(
@@ -39,5 +40,9 @@ if __name__ == "__main__":
         ]
     )
     output = predict(model, device, img, transform)
+    criterion = nn.MSELoss()
+    target = torch.zeros_like(output)
+    loss = criterion(output, target)
+    print(f"Loss: {loss.item()}")
     plt.imshow(output.squeeze().cpu().numpy().transpose(1, 2, 0))
     plt.show()
