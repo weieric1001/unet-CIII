@@ -27,7 +27,7 @@ def train(
     learning_rate: float = 1e-3,
     val_percent: float = 0.1,
     save_checkpoint: bool = True,
-    img_size: float = 128,
+    img_size: float = 448,
     amp: bool = False,
     weight_decay: float = 1e-8,
 ):
