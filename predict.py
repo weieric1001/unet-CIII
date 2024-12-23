@@ -29,9 +29,12 @@ def predict(net, device, img, transform=None):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(n_channels=3, n_classes=3)
-    model.load_state_dict(torch.load("./checkpoints/checkpoint_epoch7.pth"))
+    model.load_state_dict(
+        torch.load("./checkpoints/checkpoint_epoch7.pth", weights_only=True)
+    )
     model.eval()
-    img = Image.open("./CIII/pre/front/processed/625505.jpg")
+    input_image = Image.open("./CIII/pre/front/processed/625505.jpg")
+    ground_truth = Image.open("./CIII/post/front/processed/625505.jpg")
     transform = transforms.Compose(
         [
             transforms.Resize((256, 256)),
@@ -39,10 +42,24 @@ if __name__ == "__main__":
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ]
     )
-    output = predict(model, device, img, transform)
+    output = predict(model, device, input_image, transform).squeeze()
+    ground_truth = transform(ground_truth)
     criterion = nn.MSELoss()
-    target = torch.zeros_like(output)
-    loss = criterion(output, target)
+    loss = criterion(output, ground_truth.to(device))
     print(f"Loss: {loss.item()}")
-    plt.imshow(output.squeeze().cpu().numpy().transpose(1, 2, 0))
+
+    mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+    std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+    ground_truth = ground_truth.cpu() * std + mean
+    ground_truth = torch.clamp(ground_truth, 0, 1)
+    output = output.cpu() * std + mean
+    output = torch.clamp(output, 0, 1)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    axes[0].set_title("Input Image")
+    axes[0].imshow(input_image.resize((256, 256), Image.Resampling.BILINEAR))
+    axes[1].set_title("Ground Truth")
+    axes[1].imshow(ground_truth.detach().permute(1, 2, 0))
+    axes[2].set_title("Prediction")
+    axes[2].imshow(output.detach().permute(1, 2, 0))
     plt.show()
