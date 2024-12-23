@@ -81,6 +81,7 @@ def train(
 
     # 5. Train the model
     model = model.to(device=device)
+    last_val_loss = 0
     for epoch in range(1, epochs + 1):
         live.log_metric(
             "learning_rate", val=optimizer.param_groups[0]["lr"], timestamp=True
@@ -88,7 +89,6 @@ def train(
 
         model.train()
         epoch_loss = 0
-        last_val_loss = 0
 
         for batch in tqdm(
             train_loader, desc=f"Epoch [{epoch:>{len(str(epochs))}}/{epochs}]"
