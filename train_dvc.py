@@ -153,4 +153,4 @@ def evaluate(model, val_loader, device):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(n_channels=3, n_classes=3)
-    train(model=model, device=device, epochs=100)
+    train(model=model, device=device, batch_size=5, epochs=100)
