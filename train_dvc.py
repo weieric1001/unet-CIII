@@ -120,7 +120,7 @@ def train(
         scheduler.step(val_loss)
         live.log_metric("val_loss", val_loss)
 
-        if save_checkpoint and val_loss > last_val_loss:
+        if save_checkpoint and val_loss < last_val_loss:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             state_dict = model.state_dict()
             save_path = f"{dir_checkpoint}/checkpoint_{time_str}.pth"
