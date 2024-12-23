@@ -7,6 +7,8 @@ from torchvision import transforms
 from pathlib import Path
 from dvclive import Live
 from tqdm import tqdm
+from PIL import Image
+
 
 from unet import UNet
 from utils.dataset import CIIDataset
@@ -21,7 +23,7 @@ def train(
     device,
     epochs: int,
     batch_size: int = 1,
-    learning_rate: float = 1e-4,
+    learning_rate: float = 1e-3,
     val_percent: float = 0.1,
     save_checkpoint: bool = True,
     save_images: bool = True,
@@ -29,7 +31,7 @@ def train(
     amp: bool = False,
     weight_decay: float = 1e-8,
 ):
-    live = Live(report="md")
+    live = Live(report=None)
     # 1. Create dataset
     transform = transforms.Compose(
         [
@@ -82,7 +84,9 @@ def train(
     # 5. Train the model
     model = model.to(device=device)
     for epoch in range(1, epochs + 1):
-        live.log_metric("learning_rate", optimizer.param_groups[0]["lr"])
+        live.log_metric(
+            "learning_rate", val=optimizer.param_groups[0]["lr"], timestamp=True
+        )
 
         model.train()
         epoch_loss = 0
@@ -111,7 +115,7 @@ def train(
             live.log_metric("train_loss_step", loss.item())
             live.next_step()
 
-        live.log_metric("train_loss_epoch", epoch_loss / len(train_loader))
+        live.log_metric("train_loss", epoch_loss / len(train_loader))
 
         # Evaluation
         val_loss = evaluate(model, val_loader, device, save_images)
