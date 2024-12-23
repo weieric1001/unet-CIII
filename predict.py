@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
+import matplotlib.pyplot as plt
 
 from unet import UNet
 
@@ -16,14 +17,12 @@ def predict(net, device, img, transform=None):
         if len(img.shape) == 3:  # [C, H, W]
             img = img.unsqueeze(0)
         img = img.to(device=device, dtype=torch.float32)
-        output = net(img)
+        output = net(img)  # [N, C, H, W]
         if output.shape[-2:] != img.shape[-2:]:
             output = F.interpolate(
                 output, size=img.shape[-2:], mode="bilinear", align_corners=False
             )
-        img_pred = output.argmax(dim=1)
-        img_pred = img_pred.cpu().numpy()
-    return img_pred
+    return output
 
 
 if __name__ == "__main__":
@@ -40,3 +39,5 @@ if __name__ == "__main__":
         ]
     )
     output = predict(model, device, img, transform)
+    plt.imshow(output.squeeze().cpu().numpy().transpose(1, 2, 0))
+    plt.show()
