@@ -86,7 +86,7 @@ def train(
 
         model.train()
         epoch_loss = 0
-        
+
         for batch in tqdm(
             train_loader, desc=f"Epoch [{epoch:>{len(str(epochs))}}/{epochs}]"
         ):
@@ -108,9 +108,12 @@ def train(
             grad_scaler.update()
 
             global_step += 1
-            live.log_metric("train_loss", loss.item())
+            live.log_metric("train_loss_step", loss.item())
+            live.next_step()
 
-        # Evaluation round
+        live.log_metric("train_loss_epoch", epoch_loss / len(train_loader))
+
+        # Evaluation
         val_loss = evaluate(model, val_loader, device, save_images)
         scheduler.step(val_loss)
         live.log_metric("val_loss", val_loss)
@@ -122,8 +125,6 @@ def train(
             torch.save(state_dict, save_path)
             live.log_artifact(save_path, type="model")
 
-        live.next_step()
-
     live.end()
 
 
@@ -132,7 +133,7 @@ def evaluate(model, val_loader, device, save_images):
     criterion = nn.MSELoss()
     val_loss = 0
     with torch.no_grad():
-        for batch in val_loader:
+        for batch in tqdm(val_loader, desc="Validation"):
             x, y = batch
             x = x.to(device=device, dtype=torch.float32)
             y = y.to(device=device, dtype=torch.float32)
