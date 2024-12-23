@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,7 +8,6 @@ from torchvision import transforms
 from pathlib import Path
 from dvclive import Live
 from tqdm import tqdm
-from PIL import Image
 
 
 from unet import UNet
@@ -16,6 +16,7 @@ from utils.dataset import CIIDataset
 pre_folder = "./CIII/pre/front/processed"
 post_folder = "./CIII/post/front/processed"
 dir_checkpoint = "./checkpoints/"
+time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
 
 def train(
@@ -26,7 +27,6 @@ def train(
     learning_rate: float = 1e-3,
     val_percent: float = 0.1,
     save_checkpoint: bool = True,
-    save_images: bool = True,
     img_size: float = 128,
     amp: bool = False,
     weight_decay: float = 1e-8,
@@ -59,16 +59,15 @@ def train(
 
     live.log_params(
         {
+            "device": device.type,
             "epochs": epochs,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
             "training_size": n_train,
             "validation_size": n_val,
-            "checkpoints": save_checkpoint,
-            "save_images": save_images,
-            "device": device.type,
             "images_size": img_size,
             "mixed_precision": amp,
+            "save_checkpoint": save_checkpoint,
         }
     )
 
@@ -79,7 +78,6 @@ def train(
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=5)
     criterion = nn.MSELoss()
     grad_scaler = torch.amp.GradScaler(enabled=amp)
-    global_step = 0
 
     # 5. Train the model
     model = model.to(device=device)
@@ -90,6 +88,7 @@ def train(
 
         model.train()
         epoch_loss = 0
+        last_val_loss = 0
 
         for batch in tqdm(
             train_loader, desc=f"Epoch [{epoch:>{len(str(epochs))}}/{epochs}]"
@@ -111,28 +110,30 @@ def train(
             grad_scaler.step(optimizer)
             grad_scaler.update()
 
-            global_step += 1
             live.log_metric("train_loss_step", loss.item())
             live.next_step()
 
         live.log_metric("train_loss", epoch_loss / len(train_loader))
 
         # Evaluation
-        val_loss = evaluate(model, val_loader, device, save_images)
+        val_loss = evaluate(model, val_loader, device)
         scheduler.step(val_loss)
         live.log_metric("val_loss", val_loss)
 
-        if save_checkpoint:
+        if save_checkpoint and val_loss > last_val_loss:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             state_dict = model.state_dict()
-            save_path = f"{dir_checkpoint}/checkpoint_epoch{epoch}.pth"
+            save_path = f"{dir_checkpoint}/checkpoint_{time_str}.pth"
             torch.save(state_dict, save_path)
+            live.log_param("checkpoint_epoch", epoch)
             live.log_artifact(save_path, type="model")
+
+        last_val_loss = val_loss
 
     live.end()
 
 
-def evaluate(model, val_loader, device, save_images):
+def evaluate(model, val_loader, device):
     model.eval()
     criterion = nn.MSELoss()
     val_loss = 0
@@ -152,4 +153,4 @@ def evaluate(model, val_loader, device, save_images):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(n_channels=3, n_classes=3)
-    train(model=model, device=device, epochs=10)
+    train(model=model, device=device, epochs=100)
